@@ -77,7 +77,7 @@ function splitText(text) {
   const chunks = [];
   for (const p of paras) {
     const start = chunks.length;
-    const sentences = p.match(/[^.!?…]+(?:[.!?…]+["')\]]*|$)\s*/g) || [p];
+    const sentences = p.match(/[^.!?â€¦]+(?:[.!?â€¦]+["')\]]*|$)\s*/g) || [p];
     let cur = "";
     for (let s of sentences) {
       s = s.trim();
@@ -260,12 +260,14 @@ async function handleSynth(req, res, url, stream) {
       });
       if (closed || !fmt) return;
       const pcm = Buffer.concat(parts);
-      res.writeHead(200, {
+      const headers = {
         ...cors,
         "Content-Type": "audio/wav",
         "Content-Length": 44 + pcm.length,
         "X-Chunks": String(chunks.length),
-      });
+      };
+      if (body.download) headers["Content-Disposition"] = 'attachment; filename="speech.wav"';
+      res.writeHead(200, headers);
       res.end(Buffer.concat([wavHeader(fmt, pcm.length), pcm]));
     } else {
       let started = false;
@@ -305,7 +307,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, (await warm()) ? 200 : 502, "warm");
     }
 
-    const isSynth = path === "/tts" && req.method === "POST";
+    const isSynth = path === "/tts" && (req.method === "POST" || req.method === "GET");
     const isStream = path === "/tts/stream" && (req.method === "POST" || req.method === "GET");
     if (!isSynth && !isStream) return send(res, 404, "not found");
 
